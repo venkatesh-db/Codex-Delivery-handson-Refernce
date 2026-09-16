@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Retail Billing</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; color: #183047; background: #f4f7fa; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { background: #123451; color: white; padding: 1.4rem max(1rem, calc((100vw - 900px)/2)); }
+    header h1 { margin: 0; font-size: 1.6rem; }
+    main { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+    section { background: white; border-radius: 12px; padding: 1.4rem; margin-bottom: 1.2rem; box-shadow: 0 2px 12px #17324a12; }
+    h2 { margin-top: 0; font-size: 1.2rem; }
+    label { display: block; font-weight: 600; margin-bottom: .35rem; }
+    input { width: 100%; border: 1px solid #a7b8c5; border-radius: 6px; padding: .7rem; font: inherit; }
+    input:focus, button:focus { outline: 3px solid #6aa9ec; outline-offset: 2px; }
+    .row { display: grid; grid-template-columns: minmax(0, 3fr) minmax(90px, 1fr) minmax(120px, 1fr) auto; gap: .7rem; align-items: end; margin: .8rem 0; }
+    .fields { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
+    button { border: 0; border-radius: 6px; padding: .72rem 1rem; font: inherit; font-weight: 600; cursor: pointer; background: #1766a5; color: white; }
+    button.secondary { background: #e5eef5; color: #123451; }
+    button.danger { background: #a13737; }
+    button:disabled { opacity: .55; cursor: wait; }
+    .actions { display: flex; gap: .7rem; flex-wrap: wrap; margin-top: 1rem; }
+    .error { color: #9b2525; font-weight: 600; }
+    .success { color: #176241; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #dce5ec; padding: .65rem .2rem; text-align: left; }
+    .money { text-align: right; }
+    .totals { max-width: 270px; margin-left: auto; }
+    .totals p { display: flex; justify-content: space-between; }
+    .totals .grand { font-size: 1.2rem; font-weight: 700; border-top: 2px solid; padding-top: .5rem; }
+    .history button { background: none; color: #1766a5; padding: .2rem; text-align: left; }
+    @media (max-width: 650px) { .row, .fields { grid-template-columns: 1fr 1fr; } .product { grid-column: 1 / -1; } }
+    @media print { header, #form-section, #history-section, #message { display: none; } body { background: white; } section { box-shadow: none; } }
+  </style>
+</head>
+<body>
+  <header><h1>Retail Billing</h1></header>
+  <main>
+    <section id="form-section">
+      <h2>Create invoice</h2>
+      <p>Enter products and prices for this sale. Saving creates a final invoice; check the details before submitting. Amounts are in USD.</p>
+      <form id="invoice-form">
+        <div class="fields">
+          <div><label for="customer">Customer name</label><input id="customer" name="customer" maxlength="120" required autocomplete="name"></div>
+          <div><label for="tax">Tax rate (%)</label><input id="tax" name="tax" type="number" min="0" max="100" step="0.01" value="0" required></div>
+          <div><label for="discount">Discount rate (%)</label><input id="discount" name="discount" type="number" min="0" max="100" step="0.01" value="0" required></div>
+        </div>
+        <h3>Products</h3>
+        <div id="items"></div>
+        <div class="actions"><button type="button" class="secondary" id="add-item">Add product</button><button type="submit" id="save">Save invoice</button></div>
+      </form>
+      <p id="message" role="status" aria-live="polite"></p>
+    </section>
+    <section id="invoice-section" hidden>
+      <h2 id="invoice-title"></h2>
+      <p id="invoice-meta"></p>
+      <table><thead><tr><th>Product</th><th>Quantity</th><th class="money">Unit price</th><th class="money">Amount</th></tr></thead><tbody id="invoice-lines"></tbody></table>
+      <div class="totals"><p><span>Subtotal</span><span id="subtotal"></span></p><p><span id="discount-label">Discount</span><span id="discount-amount"></span></p><p><span id="tax-label">Tax</span><span id="tax-amount"></span></p><p class="grand"><span>Total</span><span id="total"></span></p></div>
+      <button type="button" class="secondary" id="print">Print invoice</button>
+    </section>
+    <section id="history-section"><h2>Find an invoice</h2><form id="lookup-form"><label for="lookup-id">Invoice number</label><input id="lookup-id" type="number" min="1" step="1" required><button type="submit">Open invoice</button></form><h2>Recent invoices</h2><div id="history" class="history" aria-live="polite">Loading…</div></section>
+  </main>
+  <script>
+    const $ = id => document.getElementById(id);
+    const money = cents => new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(cents / 100);
+    function addItem() {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = '<div class="product"><label>Product name<input name="product_name" maxlength="120" required></label></div><div><label>Quantity<input name="quantity" type="number" min="0.001" max="1000000" step="0.001" value="1" required></label></div><div><label>Unit price<input name="unit_price" type="number" min="0" max="1000000" step="0.01" required></label></div><button type="button" class="danger" aria-label="Remove product">Remove</button>';
+      row.querySelector('button').onclick = () => { if ($('items').children.length > 1) row.remove(); };
+      $('items').append(row);
+    }
+    function showInvoice(invoice) {
+      $('invoice-section').hidden = false;
+      $('invoice-title').textContent = `Invoice #${invoice.id}`;
+      $('invoice-meta').textContent = `${invoice.customer_name} · ${new Date(invoice.created_at).toLocaleString()}`;
+      $('invoice-lines').replaceChildren();
+      for (const item of invoice.items) {
+        const tr = document.createElement('tr');
+        for (const value of [item.product_name, item.quantity, money(item.unit_price_cents), money(item.line_total_cents)]) {
+          const td = document.createElement('td'); td.textContent = value; tr.append(td);
+        }
+        tr.children[2].className = tr.children[3].className = 'money';
+        $('invoice-lines').append(tr);
+      }
+      $('subtotal').textContent = money(invoice.subtotal_cents);
+      $('discount-label').textContent = `Discount (${invoice.discount_rate}%)`;
+      $('discount-amount').textContent = `-${money(invoice.discount_cents)}`;
+      $('tax-label').textContent = `Tax (${invoice.tax_rate}%)`;
+      $('tax-amount').textContent = money(invoice.tax_cents);
+      $('total').textContent = money(invoice.total_cents);
+    }
+    async function loadHistory() {
+      try {
+        const response = await fetch('/api/invoices');
+        if (!response.ok) throw Error('Could not load invoices');
+        const invoices = await response.json();
+        $('history').replaceChildren();
+        if (!invoices.length) { $('history').textContent = 'No invoices yet.'; return; }
+        for (const invoice of invoices) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = `#${invoice.id} · ${invoice.customer_name} · ${money(invoice.total_cents)}`;
+          button.onclick = async () => {
+            try {
+              const result = await fetch(`/api/invoices/${invoice.id}`);
+              if (!result.ok) throw Error('Could not open invoice');
+              showInvoice(await result.json());
+            } catch (error) { $('message').textContent = error.message; $('message').className = 'error'; }
+          };
+          const div = document.createElement('div'); div.append(button); $('history').append(div);
+        }
+      } catch (error) { $('history').textContent = error.message; }
+    }
+    $('add-item').onclick = addItem;
+    $('lookup-form').onsubmit = async event => {
+      event.preventDefault();
+      $('message').textContent = '';
+      try {
+        const result = await fetch(`/api/invoices/${encodeURIComponent($('lookup-id').value)}`);
+        if (!result.ok) throw Error(result.status === 404 ? 'Invoice not found' : 'Could not open invoice');
+        showInvoice(await result.json());
+        $('invoice-section').scrollIntoView();
+      } catch (error) { $('message').textContent = error.message; $('message').className = 'error'; }
+    };
+    $('print').onclick = () => window.print();
+    let pendingIdempotencyKey = null;
+    let pendingInvoicePayload = null;
+    $('invoice-form').onsubmit = async event => {
+      event.preventDefault();
+      const items = [...$('items').children].map(row => ({
+        product_name: row.querySelector('[name=product_name]').value,
+        quantity: row.querySelector('[name=quantity]').value,
+        unit_price: row.querySelector('[name=unit_price]').value
+      }));
+      const payload = {customer_name: $('customer').value, tax_rate: $('tax').value, discount_rate: $('discount').value, items};
+      const serializedPayload = JSON.stringify(payload);
+      if (pendingInvoicePayload !== serializedPayload) {
+        pendingIdempotencyKey = crypto.randomUUID();
+        pendingInvoicePayload = serializedPayload;
+      }
+      $('save').disabled = true;
+      $('message').textContent = 'Saving…'; $('message').className = '';
+      try {
+        const response = await fetch('/api/invoices', {
+          method: 'POST', headers: {'Content-Type': 'application/json', 'Idempotency-Key': pendingIdempotencyKey},
+          body: serializedPayload
+        });
+        const data = await response.json();
+        if (!response.ok) throw Error(data.error || 'Could not save invoice');
+        showInvoice(data);
+        $('message').textContent = `Invoice #${data.id} saved.`; $('message').className = 'success';
+        await loadHistory();
+      } catch (error) { $('message').textContent = error.message; $('message').className = 'error'; }
+      finally { $('save').disabled = false; }
+    };
+    addItem(); loadHistory();
+  </script>
+</body>
+</html>

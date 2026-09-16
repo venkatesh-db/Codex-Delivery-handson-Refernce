@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "change_id": "2026-09-16-day3-coder-journal",
+  "title": "Day 3 reusable prompt and response journal",
+  "profile": "profile_sse",
+  "skill": "retail-coding-standards",
+  "agent": null,
+  "scope": {
+    "outcome": "Provide another coder with a standalone copy of the available user-visible prompts, responses, engineering decisions, evidence, corrections, and reusable governed-development methodology.",
+    "allowed_paths": [
+      "day3sucess.md",
+      "governance/evidence/2026-09-16-day3-coder-journal.json"
+    ],
+    "forbidden_paths": ["billing.sqlite3"]
+  },
+  "actions": [
+    {
+      "actor": "profile_sse",
+      "operation": "create",
+      "target": "day3sucess.md",
+      "outcome": "completed from the available user-visible conversation journal"
+    }
+  ],
+  "checks": [
+    {
+      "name": "governance-policy",
+      "command": "python3 tools/governance_check.py validate --stage review",
+      "status": "passed"
+    },
+    {
+      "name": "python-compile",
+      "command": "python3 -m py_compile app.py tools/governance_check.py",
+      "status": "pending"
+    },
+    {
+      "name": "unit-and-http-tests",
+      "command": "python3 -m unittest discover -s tests -v",
+      "status": "pending"
+    }
+  ],
+  "exceptions": [],
+  "human_approval": {
+    "status": "pending",
+    "approver": null,
+    "reference": null
+  },
+  "corrective_actions": [],
+  "state": "ready-for-review"
+}

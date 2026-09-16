@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "change_id": "2026-09-15-governance-workflow",
+  "title": "Automated AI governance and observability workflow",
+  "profile": "profile_sse",
+  "skill": "retail-coding-standards",
+  "agent": "feature_implementer",
+  "scope": {
+    "outcome": "Reject unauthorized AI operations, preserve structured evidence, and gate release on tests and human approval.",
+    "allowed_paths": [
+      ".github/",
+      ".gitignore",
+      "README.md",
+      "docs/ai-governance.md",
+      "governance/",
+      "tools/governance_check.py",
+      "tests/test_governance.py"
+    ],
+    "forbidden_paths": ["billing.sqlite3"]
+  },
+  "actions": [
+    {
+      "actor": "profile_sse",
+      "operation": "create",
+      "target": "governance/",
+      "outcome": "completed"
+    },
+    {
+      "actor": "profile_sse",
+      "operation": "create",
+      "target": "tools/governance_check.py",
+      "outcome": "completed"
+    },
+    {
+      "actor": "profile_sse",
+      "operation": "create",
+      "target": "tests/test_governance.py",
+      "outcome": "completed"
+    },
+    {
+      "actor": "profile_sse",
+      "operation": "create",
+      "target": ".github/",
+      "outcome": "completed"
+    },
+    {
+      "actor": "profile_sse",
+      "operation": "create",
+      "target": "docs/ai-governance.md",
+      "outcome": "completed"
+    },
+    {
+      "actor": "profile_sse",
+      "operation": "modify",
+      "target": "README.md",
+      "outcome": "completed"
+    },
+    {
+      "actor": "profile_sse",
+      "operation": "modify",
+      "target": ".gitignore",
+      "outcome": "completed"
+    },
+    {
+      "actor": "feature_implementer",
+      "operation": "modify",
+      "target": "governance/",
+      "outcome": "hardened policy and evidence validation"
+    },
+    {
+      "actor": "feature_implementer",
+      "operation": "modify",
+      "target": "tools/governance_check.py",
+      "outcome": "added Git-diff and structural enforcement"
+    },
+    {
+      "actor": "feature_implementer",
+      "operation": "modify",
+      "target": "tests/test_governance.py",
+      "outcome": "expanded negative-path coverage"
+    },
+    {
+      "actor": "feature_implementer",
+      "operation": "modify",
+      "target": ".github/",
+      "outcome": "connected CI to actual changed paths"
+    }
+  ],
+  "checks": [
+    {"name": "governance-policy", "command": "python3 tools/governance_check.py validate --stage review", "status": "passed"},
+    {"name": "python-compile", "command": "python3 -m py_compile app.py tools/governance_check.py", "status": "passed"},
+    {"name": "unit-and-http-tests", "command": "python3 -m unittest discover -s tests -v", "status": "passed"}
+  ],
+  "exceptions": [
+    {
+      "category": "design-review",
+      "impact": "The first draft validated declared scope but did not compare it with actual Git changed paths, allowing unrecorded scope expansion to escape the policy check.",
+      "evidence": "The feature_implementer review identified the missing diff-to-manifest comparison before final validation."
+    }
+  ],
+  "human_approval": {
+    "status": "pending",
+    "approver": null,
+    "reference": null
+  },
+  "corrective_actions": [
+    {
+      "owner": "feature_implementer",
+      "action": "Added --base-ref Git diff validation, required same-change evidence, protected-path checks, and tests for out-of-scope and unrecorded files.",
+      "status": "completed"
+    }
+  ],
+  "state": "ready-for-release"
+}

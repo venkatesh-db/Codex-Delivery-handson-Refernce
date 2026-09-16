@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "change_id": "2026-09-15-conversation-training-log",
+  "title": "Shareable Codex governed-workflow training handoff",
+  "profile": "profile_sse",
+  "skill": "retail-coding-standards",
+  "agent": null,
+  "scope": {
+    "outcome": "Give future coders a durable, shareable chronology of the project's prompts, profiles, skills, agents, evidence practices, implemented outcomes, corrections, and pending work without exposing hidden reasoning or sensitive data.",
+    "allowed_paths": [
+      "docs/codex-governed-workflow-training.md",
+      "governance/evidence/2026-09-15-conversation-training-log.json"
+    ],
+    "forbidden_paths": ["billing.sqlite3"]
+  },
+  "actions": [
+    {
+      "actor": "profile_sse",
+      "operation": "create",
+      "target": "docs/codex-governed-workflow-training.md",
+      "outcome": "completed"
+    }
+  ],
+  "checks": [
+    {
+      "name": "governance-policy",
+      "command": "python3 tools/governance_check.py validate --stage review",
+      "status": "passed"
+    },
+    {
+      "name": "python-compile",
+      "command": "python3 -m py_compile app.py tools/governance_check.py",
+      "status": "pending"
+    },
+    {
+      "name": "unit-and-http-tests",
+      "command": "python3 -m unittest discover -s tests -v",
+      "status": "pending"
+    }
+  ],
+  "exceptions": [],
+  "human_approval": {
+    "status": "pending",
+    "approver": null,
+    "reference": null
+  },
+  "corrective_actions": [],
+  "state": "ready-for-review"
+}

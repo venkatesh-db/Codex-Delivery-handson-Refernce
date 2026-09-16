@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "required_skill": "retail-coding-standards",
+  "profiles": {
+    "profile_codex": {
+      "permission": "read-only",
+      "allowed_agents": ["bug_finder"]
+    },
+    "profile_coder": {
+      "permission": "read-only",
+      "allowed_agents": []
+    },
+    "profile_sse": {
+      "permission": "workspace-write",
+      "allowed_agents": ["feature_implementer"]
+    }
+  },
+  "agents": {
+    "bug_finder": {
+      "permission": "read-only",
+      "parent_profile": "profile_codex",
+      "required_skill": "retail-coding-standards"
+    },
+    "feature_implementer": {
+      "permission": "workspace-write",
+      "parent_profile": "profile_sse",
+      "required_skill": "retail-coding-standards"
+    }
+  },
+  "protected_paths": ["billing.sqlite3"],
+  "required_checks": {
+    "governance-policy": "python3 tools/governance_check.py validate --stage review",
+    "python-compile": "python3 -m py_compile app.py tools/governance_check.py",
+    "unit-and-http-tests": "python3 -m unittest discover -s tests -v"
+  },
+  "prohibited_command_fragments": [
+    "billing.sqlite3",
+    "git reset --hard",
+    "git clean -f",
+    "rm -rf"
+  ]
+}

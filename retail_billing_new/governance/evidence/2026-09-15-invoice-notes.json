@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "change_id": "2026-09-15-invoice-notes",
+  "title": "Immutable invoice notes",
+  "profile": "profile_sse",
+  "skill": "retail-coding-standards",
+  "agent": "feature_implementer",
+  "scope": {
+    "outcome": "Allow a cashier to enter an optional invoice note of at most 500 characters; trim it on the server, preserve it as an immutable invoice snapshot, include it in idempotency identity, return it through the API, and display and print it when present while legacy invoices return an empty note.",
+    "allowed_paths": [
+      "app.py",
+      "index.html",
+      "tests/test_app.py",
+      "README.md",
+      "docs/evidence-report.md",
+      "governance/evidence/2026-09-15-invoice-notes.json"
+    ],
+    "forbidden_paths": ["billing.sqlite3"]
+  },
+  "expected_behavior": [
+    "The invoice note is optional and accepts at most 500 characters after server-side trimming.",
+    "A saved non-empty note is an immutable invoice snapshot returned by invoice APIs and displayed and printed by the cashier UI.",
+    "The normalized note participates in the invoice idempotency fingerprint, so an exact retry replays and a changed note with the same key conflicts.",
+    "Legacy invoices without a stored note are returned with an empty note without changing their historical data.",
+    "An invalid note returns HTTP 400 and creates no invoice, line, discount, note, or idempotency rows."
+  ],
+  "actions": [
+    {
+      "actor": "feature_implementer",
+      "operation": "create",
+      "target": "governance/evidence/2026-09-15-invoice-notes.json",
+      "outcome": "completed"
+    }
+  ],
+  "checks": [
+    {
+      "name": "governance-policy",
+      "command": "python3 tools/governance_check.py validate --stage review",
+      "status": "pending"
+    },
+    {
+      "name": "python-compile",
+      "command": "python3 -m py_compile app.py tools/governance_check.py",
+      "status": "pending"
+    },
+    {
+      "name": "unit-and-http-tests",
+      "command": "python3 -m unittest discover -s tests -v",
+      "status": "pending"
+    }
+  ],
+  "exceptions": [],
+  "human_approval": {
+    "status": "pending",
+    "approver": null,
+    "reference": null
+  },
+  "corrective_actions": [],
+  "state": "draft"
+}
