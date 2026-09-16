@@ -1,0 +1,49 @@
+name: Governance and evidence gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  policy-and-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate governance evidence
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -n "$BASE_REF" ] && [ "$BASE_REF" != "0000000000000000000000000000000000000000" ]; then
+            python3 tools/governance_check.py validate --stage review --base-ref "$BASE_REF"
+          else
+            python3 tools/governance_check.py validate --stage review
+          fi
+      - name: Compile Python
+        run: python3 -m py_compile app.py tools/governance_check.py
+      - name: Run unit and HTTP integration tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Publish governance dashboard
+        run: python3 tools/governance_check.py dashboard | tee governance-dashboard.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: governance-dashboard
+          path: governance-dashboard.md
+
+  human-approved-release-gate:
+    if: github.event_name == 'workflow_dispatch'
+    needs: policy-and-tests
+    runs-on: ubuntu-latest
+    environment: production-approval
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce release policy after protected-environment approval
+        run: python3 tools/governance_check.py validate --stage release --human-approved
+      - name: Gate result
+        run: echo "Governance release gate passed; deployment is not configured for this local prototype."
